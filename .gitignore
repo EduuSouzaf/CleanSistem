@@ -1,0 +1,32 @@
+# ── .NET backend ──────────────────────────
+pdv/**/bin/
+pdv/**/obj/
+pdv/**/*.user
+pdv/**/*.suo
+pdv/**/.vs/
+pdv/**/appsettings.*.json
+!pdv/**/appsettings.json
+!pdv/**/appsettings.Development.json
+pdv/**/*.db
+pdv/**/*.db-shm
+pdv/**/*.db-wal
+
+# ── React / Vite frontend ─────────────────
+pdv-front/node_modules/
+pdv-front/dist/
+pdv-front/.env
+pdv-front/.env.local
+pdv-front/.env.*.local
+pdv-front/.vite/
+
+# ── Claude Code ───────────────────────────
+**/.claude/
+
+# ── Sistema / editor ──────────────────────
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+.idea/
+.vscode/
+*.swp
