@@ -83,40 +83,4 @@ public class VendaService(AppDbContext db)
         return (venda, null);
     }
 
-    public (bool ok, string? erro) Devolver(int vendaId, DevolucaoRequest req)
-    {
-        var venda = db.Vendas.Include(v => v.Itens).FirstOrDefault(v => v.Id == vendaId);
-        if (venda is null)
-            return (false, "Venda não encontrada.");
-
-        if (req.Itens is null || req.Itens.Count == 0)
-            return (false, "Informe ao menos um item para devolução.");
-
-        foreach (var itemReq in req.Itens)
-        {
-            var vendaItem = venda.Itens.FirstOrDefault(i => i.ProdutoId == itemReq.ProdutoId);
-            if (vendaItem is null)
-                return (false, $"Produto Id={itemReq.ProdutoId} não encontrado nesta venda.");
-
-            if (itemReq.Quantidade <= 0 || itemReq.Quantidade > vendaItem.Quantidade)
-                return (false, $"Quantidade inválida para devolução de '{vendaItem.NomeProduto}' (máx: {vendaItem.Quantidade}).");
-
-            var produto = db.Produtos.FirstOrDefault(p => p.Id == itemReq.ProdutoId);
-            if (produto is not null)
-                produto.Estoque += itemReq.Quantidade;
-
-            db.Movimentacoes.Add(new EstoqueMovimentacao
-            {
-                ProdutoId = itemReq.ProdutoId,
-                NomeProduto = vendaItem.NomeProduto,
-                Tipo = "Entrada",
-                Quantidade = itemReq.Quantidade,
-                LocalCompra = $"Devolução - Venda #{vendaId}",
-                Data = DateTime.UtcNow
-            });
-        }
-
-        db.SaveChanges();
-        return (true, null);
-    }
 }

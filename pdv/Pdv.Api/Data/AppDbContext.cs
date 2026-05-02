@@ -8,6 +8,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Produto> Produtos => Set<Produto>();
     public DbSet<Venda> Vendas => Set<Venda>();
     public DbSet<EstoqueMovimentacao> Movimentacoes => Set<EstoqueMovimentacao>();
+    public DbSet<Devolucao> Devolucoes => Set<Devolucao>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -20,5 +21,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         modelBuilder.Entity<VendaItem>()
             .Ignore(i => i.Subtotal)
             .Ignore(i => i.Lucro);
+
+        modelBuilder.Entity<Devolucao>()
+            .HasMany(d => d.Itens)
+            .WithOne()
+            .HasForeignKey(i => i.DevolucaoId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

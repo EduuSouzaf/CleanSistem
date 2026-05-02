@@ -6,15 +6,15 @@ namespace Pdv.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/vendas")]
-public class VendasController(VendaService _service) : ControllerBase
+public class VendasController(VendaService _vendaService, DevolucaoService _devolucaoService) : ControllerBase
 {
     [HttpGet]
-    public IActionResult Listar() => Ok(_service.ListarTodas());
+    public IActionResult Listar() => Ok(_vendaService.ListarTodas());
 
     [HttpGet("{id:int}")]
     public IActionResult BuscarPorId(int id)
     {
-        var venda = _service.BuscarPorId(id);
+        var venda = _vendaService.BuscarPorId(id);
         if (venda is null) return NotFound(new { message = "Venda não encontrada." });
         return Ok(venda);
     }
@@ -22,16 +22,20 @@ public class VendasController(VendaService _service) : ControllerBase
     [HttpPost]
     public IActionResult Registrar([FromBody] CriarVendaRequest req)
     {
-        var (venda, erro) = _service.Registrar(req);
+        var (venda, erro) = _vendaService.Registrar(req);
         if (erro is not null) return BadRequest(new { message = erro });
         return Ok(venda);
     }
 
+    [HttpGet("{id:int}/devolucoes")]
+    public IActionResult ListarDevolucoes(int id) =>
+        Ok(_devolucaoService.ListarPorVenda(id));
+
     [HttpPost("{id:int}/devolucao")]
     public IActionResult Devolver(int id, [FromBody] DevolucaoRequest req)
     {
-        var (ok, erro) = _service.Devolver(id, req);
-        if (!ok) return BadRequest(new { message = erro });
-        return Ok(new { message = "Devolução registrada com sucesso." });
+        var (devolucao, erro) = _devolucaoService.Registrar(id, req);
+        if (erro is not null) return BadRequest(new { message = erro });
+        return Ok(devolucao);
     }
 }

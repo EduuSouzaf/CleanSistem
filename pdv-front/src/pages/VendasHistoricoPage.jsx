@@ -4,7 +4,7 @@ import {
   Banknote, QrCode, CreditCard, X, Check,
 } from 'lucide-react';
 import Toast from '../components/Toast';
-import { listarVendas, devolverVenda } from '../services/vendasService';
+import { listarVendas, devolverVenda, getDevolucoes } from '../services/vendasService';
 import { formatBRL } from '../utils/format';
 
 const PAY_LABELS = { DINHEIRO: 'Dinheiro', PIX: 'Pix', CARTAO: 'Cartão' };
@@ -17,14 +17,35 @@ function formatDate(iso) {
 }
 
 function DevolucaoModal({ venda, onClose, onSuccess }) {
+  const [historico, setHistorico] = useState([]);
+  const [loadingHistorico, setLoadingHistorico] = useState(true);
   const [qtds, setQtds] = useState(
     Object.fromEntries(venda.itens.map((i) => [i.produtoId, 0]))
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
-  const setQtd = (produtoId, val) => {
-    const max = venda.itens.find((i) => i.produtoId === produtoId)?.quantidade ?? 0;
+  // Busca devoluções anteriores para calcular saldo disponível
+  useEffect(() => {
+    getDevolucoes(venda.id)
+      .then((data) => setHistorico(Array.isArray(data) ? data : []))
+      .catch(() => setHistorico([]))
+      .finally(() => setLoadingHistorico(false));
+  }, [venda.id]);
+
+  // jaDevolvido por produto, somando todas as devoluções anteriores
+  const jaDevolvido = {};
+  historico.forEach((dev) =>
+    dev.itens?.forEach((i) => {
+      jaDevolvido[i.produtoId] = (jaDevolvido[i.produtoId] ?? 0) + i.quantidade;
+    })
+  );
+
+  const disponivel = (produtoId, vendido) =>
+    vendido - (jaDevolvido[produtoId] ?? 0);
+
+  const setQtd = (produtoId, vendido, val) => {
+    const max = disponivel(produtoId, vendido);
     setQtds((q) => ({ ...q, [produtoId]: Math.min(Math.max(0, Number(val)), max) }));
   };
 
@@ -34,6 +55,14 @@ function DevolucaoModal({ venda, onClose, onSuccess }) {
 
   const handleDevolver = async () => {
     if (itensDevolver.length === 0) return setError('Selecione ao menos um item.');
+    // Validação frontend antes de enviar
+    for (const item of itensDevolver) {
+      const vendaItem = venda.itens.find((i) => i.produtoId === item.produtoId);
+      const disp = disponivel(item.produtoId, vendaItem.quantidade);
+      if (item.quantidade > disp) {
+        return setError(`Quantidade inválida para "${vendaItem.nomeProduto}" (disponível: ${disp}).`);
+      }
+    }
     setSaving(true);
     setError(null);
     try {
@@ -60,27 +89,48 @@ function DevolucaoModal({ venda, onClose, onSuccess }) {
           </button>
         </div>
 
-        <div className="p-5 space-y-3 max-h-80 overflow-y-auto">
-          <p className="text-xs text-slate-400">Informe a quantidade a devolver (0 = não devolver)</p>
-          {venda.itens.map((item) => (
-            <div key={item.produtoId} className="flex items-center gap-3 bg-slate-50 rounded-xl px-4 py-3">
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-slate-900 truncate">{item.nomeProduto}</p>
-                <p className="text-xs text-slate-400">{item.quantidade} un. · {formatBRL(item.precoUnitario)}</p>
-              </div>
-              <input
-                type="number"
-                min="0"
-                max={item.quantidade}
-                value={qtds[item.produtoId]}
-                onChange={(e) => setQtd(item.produtoId, e.target.value)}
-                className="w-16 text-center text-sm font-bold px-2 py-1.5 border-2 border-slate-200 rounded-lg focus:border-orange-400 focus:outline-none"
-              />
-            </div>
-          ))}
+        <div className="p-5 space-y-3 max-h-96 overflow-y-auto">
+          {loadingHistorico ? (
+            <p className="text-xs text-slate-400 text-center py-4">Verificando devoluções anteriores...</p>
+          ) : (
+            venda.itens.map((item) => {
+              const jaDev = jaDevolvido[item.produtoId] ?? 0;
+              const disp  = disponivel(item.produtoId, item.quantidade);
+              const esgotado = disp === 0;
+
+              return (
+                <div key={item.produtoId} className={`rounded-xl px-4 py-3 ${esgotado ? 'bg-slate-50 opacity-60' : 'bg-orange-50 border border-orange-100'}`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-slate-900 truncate">{item.nomeProduto}</p>
+                      <div className="flex gap-3 mt-1 text-xs text-slate-500">
+                        <span>Vendidos: <b className="text-slate-700">{item.quantidade}</b></span>
+                        {jaDev > 0 && <span>Devolvidos: <b className="text-orange-600">{jaDev}</b></span>}
+                        <span>Disponível: <b className={disp > 0 ? 'text-green-700' : 'text-red-500'}>{disp}</b></span>
+                      </div>
+                    </div>
+                    {esgotado ? (
+                      <span className="text-xs font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-lg shrink-0">
+                        Devolvido
+                      </span>
+                    ) : (
+                      <input
+                        type="number"
+                        min="0"
+                        max={disp}
+                        value={qtds[item.produtoId]}
+                        onChange={(e) => setQtd(item.produtoId, item.quantidade, e.target.value)}
+                        className="w-16 text-center text-sm font-bold px-2 py-1.5 border-2 border-orange-200 rounded-lg focus:border-orange-400 focus:outline-none bg-white shrink-0"
+                      />
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
 
-        {error && <p className="px-5 text-sm text-red-600 font-medium">{error}</p>}
+        {error && <p className="px-5 pb-2 text-sm text-red-600 font-medium">{error}</p>}
 
         <div className="px-5 py-4 border-t border-slate-100 flex gap-3">
           <button onClick={onClose} className="flex-1 py-3 rounded-2xl border border-slate-200 font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
@@ -88,7 +138,7 @@ function DevolucaoModal({ venda, onClose, onSuccess }) {
           </button>
           <button
             onClick={handleDevolver}
-            disabled={saving || itensDevolver.length === 0}
+            disabled={saving || itensDevolver.length === 0 || loadingHistorico}
             className="flex-1 py-3 rounded-2xl bg-orange-500 hover:bg-orange-600 active:scale-95 text-white font-bold transition-all disabled:opacity-40 flex items-center justify-center gap-2"
           >
             <Check size={16} />

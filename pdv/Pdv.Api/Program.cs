@@ -14,6 +14,7 @@ builder.Services.AddDbContext<AppDbContext>(opt => opt.UseNpgsql(connStr));
 
 builder.Services.AddScoped<ProdutoService>();
 builder.Services.AddScoped<VendaService>();
+builder.Services.AddScoped<DevolucaoService>();
 builder.Services.AddScoped<EstoqueService>();
 builder.Services.AddScoped<RelatorioService>();
 
