@@ -1,35 +1,17 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef } from 'react';
 import { ScanLine, Camera } from 'lucide-react';
 import CameraScanner from './CameraScanner';
 
-export default function BarcodeInput({ onSubmit, cartLength }) {
+export default function BarcodeInput({ onSubmit }) {
   const [value, setValue] = useState('');
   const [cameraOpen, setCameraOpen] = useState(false);
   const inputRef = useRef(null);
-
-  const refocus = useCallback(() => {
-    if (!cameraOpen) inputRef.current?.focus();
-  }, [cameraOpen]);
-
-  useEffect(() => {
-    refocus();
-    document.addEventListener('mousedown', refocus);
-    return () => document.removeEventListener('mousedown', refocus);
-  }, [refocus]);
-
-  useEffect(() => {
-    refocus();
-  }, [cartLength, refocus]);
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && value.trim()) {
       onSubmit(value.trim());
       setValue('');
     }
-  };
-
-  const handleCameraDetect = (barcode) => {
-    onSubmit(barcode);
   };
 
   return (
@@ -54,7 +36,6 @@ export default function BarcodeInput({ onSubmit, cartLength }) {
           />
         </div>
         <button
-          onMouseDown={(e) => e.preventDefault()}
           onClick={() => setCameraOpen(true)}
           className="shrink-0 w-14 h-14 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white rounded-2xl flex items-center justify-center transition-all"
           title="Escanear com câmera"
@@ -65,11 +46,8 @@ export default function BarcodeInput({ onSubmit, cartLength }) {
 
       {cameraOpen && (
         <CameraScanner
-          onDetected={handleCameraDetect}
-          onClose={() => {
-            setCameraOpen(false);
-            setTimeout(() => inputRef.current?.focus(), 100);
-          }}
+          onDetected={(barcode) => onSubmit(barcode)}
+          onClose={() => setCameraOpen(false)}
         />
       )}
     </>

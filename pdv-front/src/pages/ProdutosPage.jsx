@@ -100,7 +100,7 @@ function ProductModal({ produto, onSave, onClose }) {
           {/* Nome */}
           <div>
             <label className="block text-xs font-semibold text-slate-500 mb-1">Nome do produto</label>
-            <input value={form.nome} onChange={set('nome')} placeholder="Ex: Coca-Cola 350ml" autoFocus className={inputCls('nome')} />
+            <input value={form.nome} onChange={set('nome')} placeholder="Ex: Coca-Cola 350ml" className={inputCls('nome')} />
             {errors.nome && <p className="text-xs text-red-500 mt-1">{errors.nome}</p>}
           </div>
 
