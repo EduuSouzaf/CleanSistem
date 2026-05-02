@@ -1,0 +1,5 @@
+{
+  "buildCommand": "cd pdv-front && npm install && npm run build",
+  "outputDirectory": "pdv-front/dist",
+  "framework": null
+}
