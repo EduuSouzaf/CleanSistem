@@ -9,4 +9,5 @@ public class EstoqueMovimentacao
     public int Quantidade { get; set; }
     public decimal PrecoCusto { get; set; }
     public DateTime Data { get; set; }
+    public string? LocalCompra { get; set; }
 }

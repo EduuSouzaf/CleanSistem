@@ -29,6 +29,7 @@ public class EstoqueService(AppDbContext db)
             Tipo = "Entrada",
             Quantidade = req.Quantidade,
             PrecoCusto = req.PrecoCusto,
+            LocalCompra = req.LocalCompra?.Trim(),
             Data = DateTime.UtcNow
         };
 

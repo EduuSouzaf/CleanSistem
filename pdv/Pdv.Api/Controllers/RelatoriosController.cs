@@ -12,4 +12,7 @@ public class RelatoriosController(RelatorioService _service) : ControllerBase
 
     [HttpGet("estoque")]
     public IActionResult Estoque() => Ok(_service.Estoque());
+
+    [HttpGet("produtos-parados")]
+    public IActionResult ProdutosParados() => Ok(_service.ProdutosParados());
 }

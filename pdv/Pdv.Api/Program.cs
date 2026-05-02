@@ -41,5 +41,6 @@ app.UseSwaggerUI();
 
 app.UseCors();
 app.MapControllers();
+app.MapGet("/api/v1/health", () => Results.Ok(new { status = "ok" }));
 
 app.Run();
