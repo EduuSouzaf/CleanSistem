@@ -18,6 +18,17 @@ public class DevolucaoService(AppDbContext db)
         if (req.Itens is null || req.Itens.Count == 0)
             return (null, "Informe ao menos um item para devolução.");
 
+        // Agrega itens duplicados pelo mesmo produtoId antes de qualquer validação.
+        // Impede que duas entradas com o mesmo produto burlem a checagem de saldo.
+        var itens = req.Itens
+            .GroupBy(i => i.ProdutoId)
+            .Select(g => new DevolucaoItemRequest
+            {
+                ProdutoId  = g.Key,
+                Quantidade = g.Sum(x => x.Quantidade)
+            })
+            .ToList();
+
         var venda = db.Vendas.Include(v => v.Itens).FirstOrDefault(v => v.Id == vendaId);
         if (venda is null)
             return (null, "Venda não encontrada.");
@@ -29,7 +40,7 @@ public class DevolucaoService(AppDbContext db)
             .ToList();
 
         // Valida todos os itens ANTES de mexer no estoque
-        foreach (var itemReq in req.Itens)
+        foreach (var itemReq in itens)
         {
             if (itemReq.Quantidade <= 0)
                 return (null, "Quantidade deve ser maior que zero.");
@@ -37,6 +48,12 @@ public class DevolucaoService(AppDbContext db)
             var vendaItem = venda.Itens.FirstOrDefault(i => i.ProdutoId == itemReq.ProdutoId);
             if (vendaItem is null)
                 return (null, $"Produto Id={itemReq.ProdutoId} não encontrado nesta venda.");
+
+            // Sanity check: nunca pode devolver mais do que foi vendido originalmente
+            if (itemReq.Quantidade > vendaItem.Quantidade)
+                return (null,
+                    $"'{vendaItem.NomeProduto}': quantidade solicitada ({itemReq.Quantidade}) " +
+                    $"excede o total vendido ({vendaItem.Quantidade}).");
 
             int jaDevolvido = devolucoesDaVenda
                 .SelectMany(d => d.Itens)
@@ -51,10 +68,10 @@ public class DevolucaoService(AppDbContext db)
                     $"(vendido: {vendaItem.Quantidade}, já devolvido: {jaDevolvido}).");
         }
 
-        // Tudo válido — aplica alterações
-        var itens = new List<DevolucaoItem>();
+        // Tudo válido — aplica alterações (usa a lista agregada, não req.Itens)
+        var devolucaoItens = new List<DevolucaoItem>();
 
-        foreach (var itemReq in req.Itens)
+        foreach (var itemReq in itens)
         {
             var vendaItem = venda.Itens.First(i => i.ProdutoId == itemReq.ProdutoId);
 
@@ -72,7 +89,7 @@ public class DevolucaoService(AppDbContext db)
                 Data = DateTime.UtcNow
             });
 
-            itens.Add(new DevolucaoItem
+            devolucaoItens.Add(new DevolucaoItem
             {
                 ProdutoId = itemReq.ProdutoId,
                 NomeProduto = vendaItem.NomeProduto,
@@ -84,7 +101,7 @@ public class DevolucaoService(AppDbContext db)
         {
             VendaId = vendaId,
             Data = DateTime.UtcNow,
-            Itens = itens
+            Itens = devolucaoItens
         };
 
         db.Devolucoes.Add(devolucao);

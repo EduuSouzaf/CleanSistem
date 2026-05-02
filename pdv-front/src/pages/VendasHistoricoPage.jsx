@@ -19,6 +19,7 @@ function formatDate(iso) {
 function DevolucaoModal({ venda, onClose, onSuccess }) {
   const [historico, setHistorico] = useState([]);
   const [loadingHistorico, setLoadingHistorico] = useState(true);
+  const [erroHistorico, setErroHistorico] = useState(null);
   const [qtds, setQtds] = useState(
     Object.fromEntries(venda.itens.map((i) => [i.produtoId, 0]))
   );
@@ -29,7 +30,7 @@ function DevolucaoModal({ venda, onClose, onSuccess }) {
   useEffect(() => {
     getDevolucoes(venda.id)
       .then((data) => setHistorico(Array.isArray(data) ? data : []))
-      .catch(() => setHistorico([]))
+      .catch(() => setErroHistorico('Não foi possível verificar devoluções anteriores. Feche e tente novamente.'))
       .finally(() => setLoadingHistorico(false));
   }, [venda.id]);
 
@@ -46,7 +47,7 @@ function DevolucaoModal({ venda, onClose, onSuccess }) {
 
   const setQtd = (produtoId, vendido, val) => {
     const max = disponivel(produtoId, vendido);
-    setQtds((q) => ({ ...q, [produtoId]: Math.min(Math.max(0, Number(val)), max) }));
+    setQtds((q) => ({ ...q, [produtoId]: Math.min(Math.max(0, Math.floor(Number(val))), max) }));
   };
 
   const itensDevolver = venda.itens
@@ -92,11 +93,13 @@ function DevolucaoModal({ venda, onClose, onSuccess }) {
         <div className="p-5 space-y-3 max-h-96 overflow-y-auto">
           {loadingHistorico ? (
             <p className="text-xs text-slate-400 text-center py-4">Verificando devoluções anteriores...</p>
+          ) : erroHistorico ? (
+            <p className="text-sm text-red-600 font-medium text-center py-4">{erroHistorico}</p>
           ) : (
             venda.itens.map((item) => {
               const jaDev = jaDevolvido[item.produtoId] ?? 0;
               const disp  = disponivel(item.produtoId, item.quantidade);
-              const esgotado = disp === 0;
+              const esgotado = disp <= 0;
 
               return (
                 <div key={item.produtoId} className={`rounded-xl px-4 py-3 ${esgotado ? 'bg-slate-50 opacity-60' : 'bg-orange-50 border border-orange-100'}`}>
@@ -118,6 +121,7 @@ function DevolucaoModal({ venda, onClose, onSuccess }) {
                         type="number"
                         min="0"
                         max={disp}
+                        step="1"
                         value={qtds[item.produtoId]}
                         onChange={(e) => setQtd(item.produtoId, item.quantidade, e.target.value)}
                         className="w-16 text-center text-sm font-bold px-2 py-1.5 border-2 border-orange-200 rounded-lg focus:border-orange-400 focus:outline-none bg-white shrink-0"
@@ -138,7 +142,7 @@ function DevolucaoModal({ venda, onClose, onSuccess }) {
           </button>
           <button
             onClick={handleDevolver}
-            disabled={saving || itensDevolver.length === 0 || loadingHistorico}
+            disabled={saving || itensDevolver.length === 0 || loadingHistorico || !!erroHistorico}
             className="flex-1 py-3 rounded-2xl bg-orange-500 hover:bg-orange-600 active:scale-95 text-white font-bold transition-all disabled:opacity-40 flex items-center justify-center gap-2"
           >
             <Check size={16} />
