@@ -9,6 +9,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Venda> Vendas => Set<Venda>();
     public DbSet<EstoqueMovimentacao> Movimentacoes => Set<EstoqueMovimentacao>();
     public DbSet<Devolucao> Devolucoes => Set<Devolucao>();
+    public DbSet<WebAuthnCredential> WebAuthnCredentials => Set<WebAuthnCredential>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

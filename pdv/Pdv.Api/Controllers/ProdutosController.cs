@@ -1,9 +1,11 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Pdv.Api.DTOs;
 using Pdv.Api.Services;
 
 namespace Pdv.Api.Controllers;
 
+[Authorize]
 [ApiController]
 [Route("api/v1/produtos")]
 public class ProdutosController(ProdutoService _service) : ControllerBase

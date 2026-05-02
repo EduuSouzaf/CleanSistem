@@ -1,8 +1,10 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Pdv.Api.Services;
 
 namespace Pdv.Api.Controllers;
 
+[Authorize]
 [ApiController]
 [Route("api/v1/relatorios")]
 public class RelatoriosController(RelatorioService _service) : ControllerBase

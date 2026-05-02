@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
-import ConnectionScreen from './components/ConnectionScreen';
+import LoginPage from './pages/LoginPage';
 import VendasPage from './pages/VendasPage';
 import ProdutosPage from './pages/ProdutosPage';
 import EstoquePage from './pages/EstoquePage';
@@ -9,10 +9,10 @@ import RelatoriosPage from './pages/RelatoriosPage';
 import VendasHistoricoPage from './pages/VendasHistoricoPage';
 
 export default function App() {
-  const [connected, setConnected] = useState(false);
+  const [autenticado, setAutenticado] = useState(() => !!localStorage.getItem('token'));
 
-  if (!connected) {
-    return <ConnectionScreen onConnected={() => setConnected(true)} />;
+  if (!autenticado) {
+    return <LoginPage onLogin={() => setAutenticado(true)} />;
   }
 
   return (

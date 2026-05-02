@@ -1,9 +1,11 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Pdv.Api.DTOs;
 using Pdv.Api.Services;
 
 namespace Pdv.Api.Controllers;
 
+[Authorize]
 [ApiController]
 [Route("api/v1/vendas")]
 public class VendasController(VendaService _vendaService, DevolucaoService _devolucaoService) : ControllerBase
