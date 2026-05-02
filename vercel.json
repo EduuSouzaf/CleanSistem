@@ -1,5 +1,6 @@
 {
-  "buildCommand": "cd pdv-front && npm install && npm run build",
-  "outputDirectory": "pdv-front/dist",
-  "framework": null
+  "version": 2,
+  "installCommand": "npm --prefix pdv-front install",
+  "buildCommand": "npm --prefix pdv-front run build",
+  "outputDirectory": "pdv-front/dist"
 }
