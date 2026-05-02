@@ -1,12 +1,19 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
+import ConnectionScreen from './components/ConnectionScreen';
 import VendasPage from './pages/VendasPage';
 import ProdutosPage from './pages/ProdutosPage';
 import EstoquePage from './pages/EstoquePage';
 import RelatoriosPage from './pages/RelatoriosPage';
 
 export default function App() {
+  const [connected, setConnected] = useState(false);
+
+  if (!connected) {
+    return <ConnectionScreen onConnected={() => setConnected(true)} />;
+  }
+
   return (
     <BrowserRouter>
       <Layout>

@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getVendasDia } from '../services/relatoriosService';
+import { getVendasDia, getEstoque, getProdutosParados } from '../services/relatoriosService';
 
 export function useRelatorios() {
-  const [relatorio, setRelatorio] = useState(null);
+  const [vendas, setVendas] = useState(null);
+  const [estoque, setEstoque] = useState(null);
+  const [parados, setParados] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -10,8 +12,10 @@ export function useRelatorios() {
     setLoading(true);
     setError(null);
     try {
-      const data = await getVendasDia();
-      setRelatorio(data);
+      const [v, e, p] = await Promise.all([getVendasDia(), getEstoque(), getProdutosParados()]);
+      setVendas(v);
+      setEstoque(e);
+      setParados(p);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -23,5 +27,5 @@ export function useRelatorios() {
     carregar();
   }, [carregar]);
 
-  return { relatorio, loading, error, recarregar: carregar };
+  return { vendas, estoque, parados, loading, error, recarregar: carregar };
 }
