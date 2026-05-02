@@ -21,8 +21,9 @@ api.interceptors.response.use(
       localStorage.removeItem('biometria_ativa');
       window.location.reload();
     }
-    const msg = error.response?.data?.message || error.response?.data || 'Erro de conexão com o servidor';
-    return Promise.reject(new Error(typeof msg === 'string' ? msg : 'Erro inesperado'));
+    const data = error.response?.data;
+    const msg = data?.message || data?.title || (typeof data === 'string' ? data : null) || 'Erro de conexão com o servidor';
+    return Promise.reject(new Error(typeof msg === 'string' ? msg : JSON.stringify(data)));
   }
 );
 
