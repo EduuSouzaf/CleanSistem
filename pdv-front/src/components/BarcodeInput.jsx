@@ -30,8 +30,6 @@ export default function BarcodeInput({ onSubmit, cartLength }) {
 
   const handleCameraDetect = (barcode) => {
     onSubmit(barcode);
-    setCameraOpen(false);
-    setTimeout(() => inputRef.current?.focus(), 100);
   };
 
   return (

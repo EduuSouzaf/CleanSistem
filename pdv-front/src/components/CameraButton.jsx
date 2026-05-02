@@ -24,7 +24,7 @@ export default function CameraButton({ onDetected, size = 'md' }) {
 
       {open && (
         <CameraScanner
-          onDetected={(code) => { onDetected(code); setOpen(false); }}
+          onDetected={onDetected}
           onClose={() => setOpen(false)}
         />
       )}
