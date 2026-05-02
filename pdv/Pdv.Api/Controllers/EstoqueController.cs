@@ -6,10 +6,8 @@ namespace Pdv.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/estoque")]
-public class EstoqueController : ControllerBase
+public class EstoqueController(EstoqueService _service) : ControllerBase
 {
-    private readonly EstoqueService _service = new();
-
     [HttpPost("entrada")]
     public IActionResult Entrada([FromBody] EntradaEstoqueRequest req)
     {

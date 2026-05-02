@@ -5,10 +5,8 @@ namespace Pdv.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/relatorios")]
-public class RelatoriosController : ControllerBase
+public class RelatoriosController(RelatorioService _service) : ControllerBase
 {
-    private readonly RelatorioService _service = new();
-
     [HttpGet("vendas-dia")]
     public IActionResult VendasDia() => Ok(_service.VendasDia());
 

@@ -1,13 +1,15 @@
+using Microsoft.EntityFrameworkCore;
 using Pdv.Api.Data;
 
 namespace Pdv.Api.Services;
 
-public class RelatorioService
+public class RelatorioService(AppDbContext db)
 {
     public object VendasDia()
     {
-        var hoje = DateTime.Today;
-        var vendasHoje = FakeDatabase.Vendas
+        var hoje = DateTime.UtcNow.Date;
+        var vendasHoje = db.Vendas
+            .Include(v => v.Itens)
             .Where(v => v.Data.Date == hoje)
             .ToList();
 
@@ -33,7 +35,7 @@ public class RelatorioService
 
     public object Estoque()
     {
-        var estoque = FakeDatabase.Produtos
+        var estoque = db.Produtos
             .Select(p => new
             {
                 p.Id,

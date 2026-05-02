@@ -6,10 +6,8 @@ namespace Pdv.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/produtos")]
-public class ProdutosController : ControllerBase
+public class ProdutosController(ProdutoService _service) : ControllerBase
 {
-    private readonly ProdutoService _service = new();
-
     [HttpGet]
     public IActionResult Listar([FromQuery] string? codigoBarras)
     {

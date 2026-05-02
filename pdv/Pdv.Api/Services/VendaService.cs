@@ -1,12 +1,14 @@
+using Microsoft.EntityFrameworkCore;
 using Pdv.Api.Data;
 using Pdv.Api.DTOs;
 using Pdv.Api.Models;
 
 namespace Pdv.Api.Services;
 
-public class VendaService
+public class VendaService(AppDbContext db)
 {
-    public List<Venda> ListarTodas() => FakeDatabase.Vendas;
+    public List<Venda> ListarTodas() =>
+        [.. db.Vendas.Include(v => v.Itens).OrderByDescending(v => v.Data)];
 
     public (Venda? venda, string? erro) Registrar(CriarVendaRequest req)
     {
@@ -23,9 +25,9 @@ public class VendaService
             Produto? produto = null;
 
             if (itemReq.ProdutoId.HasValue)
-                produto = FakeDatabase.Produtos.FirstOrDefault(p => p.Id == itemReq.ProdutoId.Value);
+                produto = db.Produtos.FirstOrDefault(p => p.Id == itemReq.ProdutoId.Value);
             else if (!string.IsNullOrWhiteSpace(itemReq.CodigoBarras))
-                produto = FakeDatabase.Produtos.FirstOrDefault(p => p.CodigoBarras == itemReq.CodigoBarras);
+                produto = db.Produtos.FirstOrDefault(p => p.CodigoBarras == itemReq.CodigoBarras);
 
             if (produto is null)
                 return (null, $"Produto não encontrado (Id={itemReq.ProdutoId}, Código={itemReq.CodigoBarras}).");
@@ -38,14 +40,13 @@ public class VendaService
 
             produto.Estoque -= itemReq.Quantidade;
 
-            FakeDatabase.Movimentacoes.Add(new EstoqueMovimentacao
+            db.Movimentacoes.Add(new EstoqueMovimentacao
             {
-                Id = FakeDatabase.NextMovId(),
                 ProdutoId = produto.Id,
                 NomeProduto = produto.Nome,
                 Tipo = "Saida",
                 Quantidade = itemReq.Quantidade,
-                Data = DateTime.Now
+                Data = DateTime.UtcNow
             });
 
             itens.Add(new VendaItem
@@ -57,18 +58,16 @@ public class VendaService
             });
         }
 
-        var total = itens.Sum(i => i.Subtotal);
-
         var venda = new Venda
         {
-            Id = FakeDatabase.NextVendaId(),
             TipoPagamento = req.TipoPagamento,
-            Total = total,
-            Data = DateTime.Now,
+            Total = itens.Sum(i => i.Quantidade * i.PrecoUnitario),
+            Data = DateTime.UtcNow,
             Itens = itens
         };
 
-        FakeDatabase.Vendas.Add(venda);
+        db.Vendas.Add(venda);
+        db.SaveChanges();
         return (venda, null);
     }
 }

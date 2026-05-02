@@ -6,10 +6,8 @@ namespace Pdv.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/vendas")]
-public class VendasController : ControllerBase
+public class VendasController(VendaService _service) : ControllerBase
 {
-    private readonly VendaService _service = new();
-
     [HttpGet]
     public IActionResult Listar() => Ok(_service.ListarTodas());
 
