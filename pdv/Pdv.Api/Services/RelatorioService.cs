@@ -19,7 +19,9 @@ public class RelatorioService(AppDbContext db)
             .Select(g => new
             {
                 nome = g.Key.NomeProduto,
-                quantidade = g.Sum(i => i.Quantidade)
+                quantidade = g.Sum(i => i.Quantidade),
+                receita = g.Sum(i => i.PrecoUnitario * i.Quantidade),
+                lucro = g.Sum(i => (i.PrecoUnitario - i.PrecoCusto) * i.Quantidade)
             })
             .OrderByDescending(x => x.quantidade)
             .Take(5)
@@ -38,12 +40,14 @@ public class RelatorioService(AppDbContext db)
         decimal totalVendido = vendasHoje.Sum(v => v.Total);
         int qtdVendas = vendasHoje.Count;
         decimal ticketMedio = qtdVendas > 0 ? totalVendido / qtdVendas : 0;
+        decimal lucroTotal = vendasHoje.Sum(v => v.Lucro);
 
         return new
         {
             quantidadeVendas = qtdVendas,
             totalVendido,
             ticketMedio,
+            lucroTotal,
             topProdutos,
             formasPagamento
         };
@@ -61,7 +65,11 @@ public class RelatorioService(AppDbContext db)
 
         var parados = db.Produtos
             .Where(p => p.Estoque > 0 && !produtosVendidos.Contains(p.Id))
-            .Select(p => new { p.Id, p.Nome, p.Estoque, p.PrecoVenda })
+            .Select(p => new
+            {
+                p.Id, p.Nome, p.Estoque, p.PrecoVenda,
+                valorParado = p.PrecoVenda * p.Estoque
+            })
             .OrderByDescending(p => p.Estoque)
             .Take(20)
             .ToList();
@@ -79,6 +87,7 @@ public class RelatorioService(AppDbContext db)
             totalItens = comEstoque.Sum(p => p.Estoque),
             valorCusto = comEstoque.Sum(p => p.PrecoCusto * p.Estoque),
             valorVenda = comEstoque.Sum(p => p.PrecoVenda * p.Estoque),
+            lucroAtePotencial = comEstoque.Sum(p => (p.PrecoVenda - p.PrecoCusto) * p.Estoque),
             produtos = todos.Select(p => new
             {
                 p.Id, p.Nome, p.CodigoBarras, p.Estoque, p.PrecoCusto, p.PrecoVenda

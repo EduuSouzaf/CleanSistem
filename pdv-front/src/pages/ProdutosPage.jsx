@@ -10,13 +10,49 @@ function ProductModal({ produto, onSave, onClose }) {
   const [form, setForm] = useState({
     nome: produto?.nome ?? '',
     codigoBarras: produto?.codigoBarras ?? '',
-    precoCusto: produto?.precoCusto ?? '',
-    precoVenda: produto?.precoVenda ?? '',
+    precoCusto: produto?.precoCusto != null ? String(produto.precoCusto) : '',
+    precoVenda: produto?.precoVenda != null ? String(produto.precoVenda) : '',
+    margem: '',
   });
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+
+  const handleCustoChange = (e) => {
+    const custo = e.target.value;
+    setForm((f) => {
+      const margem = parseFloat(f.margem) || 0;
+      const venda = margem > 0 && custo
+        ? (parseFloat(custo) * (1 + margem / 100)).toFixed(2)
+        : f.precoVenda;
+      return { ...f, precoCusto: custo, precoVenda: venda };
+    });
+  };
+
+  const handleMargemChange = (e) => {
+    const margem = e.target.value;
+    setForm((f) => {
+      const custo = parseFloat(f.precoCusto) || 0;
+      const venda = margem && custo
+        ? (custo * (1 + parseFloat(margem) / 100)).toFixed(2)
+        : f.precoVenda;
+      return { ...f, margem, precoVenda: venda };
+    });
+  };
+
+  const applyQuickMargem = (pct) => {
+    setForm((f) => {
+      const custo = parseFloat(f.precoCusto) || 0;
+      const venda = custo ? (custo * (1 + pct / 100)).toFixed(2) : f.precoVenda;
+      return { ...f, margem: String(pct), precoVenda: venda };
+    });
+  };
+
+  const custo = parseFloat(form.precoCusto) || 0;
+  const venda = parseFloat(form.precoVenda) || 0;
+  const lucroItem = venda - custo;
+  const margemReal = custo > 0 ? ((lucroItem / custo) * 100).toFixed(1) : null;
 
   const validate = () => {
     const e = {};
@@ -43,27 +79,14 @@ function ProductModal({ produto, onSave, onClose }) {
     }
   };
 
-  const field = (label, key, opts = {}) => (
-    <div>
-      <label className="block text-xs font-semibold text-slate-500 mb-1">{label}</label>
-      <input
-        value={form[key]}
-        onChange={set(key)}
-        className={`w-full px-4 py-3 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 transition ${
-          errors[key] ? 'border-red-400 bg-red-50' : 'border-slate-200 focus:border-blue-500 bg-white'
-        }`}
-        {...opts}
-      />
-      {errors[key] && <p className="text-xs text-red-500 mt-1">{errors[key]}</p>}
-    </div>
-  );
+  const inputCls = (key) =>
+    `w-full px-4 py-3 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 transition ${
+      errors[key] ? 'border-red-400 bg-red-50' : 'border-slate-200 focus:border-blue-500 bg-white'
+    }`;
 
   return (
     <div className="fixed inset-0 bg-black/40 z-40 flex items-end lg:items-center justify-center p-4" onClick={onClose}>
-      <div
-        className="bg-white rounded-3xl w-full max-w-md p-6 shadow-2xl animate-fade-in"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className="bg-white rounded-3xl w-full max-w-md p-6 shadow-2xl animate-fade-in" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-xl font-black text-slate-900">
             {produto ? 'Editar Produto' : 'Novo Produto'}
@@ -74,9 +97,14 @@ function ProductModal({ produto, onSave, onClose }) {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {field('Nome do produto', 'nome', { placeholder: 'Ex: Coca-Cola 350ml', autoFocus: true })}
+          {/* Nome */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 mb-1">Nome do produto</label>
+            <input value={form.nome} onChange={set('nome')} placeholder="Ex: Coca-Cola 350ml" autoFocus className={inputCls('nome')} />
+            {errors.nome && <p className="text-xs text-red-500 mt-1">{errors.nome}</p>}
+          </div>
 
-          {/* Código de barras com câmera */}
+          {/* Código de barras */}
           <div>
             <label className="block text-xs font-semibold text-slate-500 mb-1">Código de barras</label>
             <div className="flex gap-2">
@@ -93,15 +121,49 @@ function ProductModal({ produto, onSave, onClose }) {
             {errors.codigoBarras && <p className="text-xs text-red-500 mt-1">{errors.codigoBarras}</p>}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            {field('Preço de custo (R$)', 'precoCusto', { type: 'number', step: '0.01', min: '0', placeholder: '0,00' })}
-            {field('Preço de venda (R$)', 'precoVenda', { type: 'number', step: '0.01', min: '0.01', placeholder: '0,00' })}
+          {/* Preço custo */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 mb-1">Preço de custo (R$)</label>
+            <input type="number" step="0.01" min="0" value={form.precoCusto} onChange={handleCustoChange} placeholder="0,00" className={inputCls('precoCusto')} />
           </div>
-          <button
-            type="submit"
-            disabled={saving}
-            className="w-full bg-blue-600 hover:bg-blue-700 active:scale-95 text-white py-4 rounded-2xl font-bold text-base transition-all disabled:opacity-50 mt-2"
-          >
+
+          {/* Margem + botões rápidos */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 mb-1">Margem de lucro (%)</label>
+            <div className="flex gap-2 mb-1.5">
+              {[30, 40, 50].map((pct) => (
+                <button
+                  key={pct}
+                  type="button"
+                  onClick={() => applyQuickMargem(pct)}
+                  className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                    form.margem === String(pct)
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-slate-100 text-slate-600 hover:bg-blue-50'
+                  }`}
+                >
+                  +{pct}%
+                </button>
+              ))}
+            </div>
+            <input type="number" step="0.1" min="0" value={form.margem} onChange={handleMargemChange} placeholder="Ex: 40" className={inputCls('margem')} />
+          </div>
+
+          {/* Preço venda */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 mb-1">Preço de venda (R$)</label>
+            <input type="number" step="0.01" min="0.01" value={form.precoVenda} onChange={set('precoVenda')} placeholder="0,00"
+              className={inputCls('precoVenda')} />
+            {errors.precoVenda && <p className="text-xs text-red-500 mt-1">{errors.precoVenda}</p>}
+            {custo > 0 && venda > 0 && (
+              <p className={`text-xs mt-1 font-semibold ${lucroItem >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                Lucro: R$ {lucroItem.toFixed(2)}{margemReal ? ` (${margemReal}%)` : ''}
+              </p>
+            )}
+          </div>
+
+          <button type="submit" disabled={saving}
+            className="w-full bg-blue-600 hover:bg-blue-700 active:scale-95 text-white py-4 rounded-2xl font-bold text-base transition-all disabled:opacity-50 mt-2">
             {saving ? 'Salvando...' : produto ? 'Salvar alterações' : 'Cadastrar produto'}
           </button>
         </form>

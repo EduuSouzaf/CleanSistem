@@ -8,7 +8,10 @@ namespace Pdv.Api.Services;
 public class VendaService(AppDbContext db)
 {
     public List<Venda> ListarTodas() =>
-        [.. db.Vendas.Include(v => v.Itens).OrderByDescending(v => v.Data)];
+        [.. db.Vendas.Include(v => v.Itens).OrderByDescending(v => v.Data).Take(200)];
+
+    public Venda? BuscarPorId(int id) =>
+        db.Vendas.Include(v => v.Itens).FirstOrDefault(v => v.Id == id);
 
     public (Venda? venda, string? erro) Registrar(CriarVendaRequest req)
     {
@@ -54,14 +57,23 @@ public class VendaService(AppDbContext db)
                 ProdutoId = produto.Id,
                 NomeProduto = produto.Nome,
                 Quantidade = itemReq.Quantidade,
-                PrecoUnitario = itemReq.PrecoUnitario > 0 ? itemReq.PrecoUnitario : produto.PrecoVenda
+                PrecoUnitario = itemReq.PrecoUnitario > 0 ? itemReq.PrecoUnitario : produto.PrecoVenda,
+                PrecoCusto = produto.PrecoCusto
             });
         }
+
+        decimal subtotal = itens.Sum(i => i.Quantidade * i.PrecoUnitario);
+        decimal desconto = Math.Min(Math.Max(0, req.Desconto), subtotal);
+        decimal total = subtotal - desconto;
+        decimal lucro = itens.Sum(i => (i.PrecoUnitario - i.PrecoCusto) * i.Quantidade) - desconto;
 
         var venda = new Venda
         {
             TipoPagamento = req.TipoPagamento,
-            Total = itens.Sum(i => i.Quantidade * i.PrecoUnitario),
+            Subtotal = subtotal,
+            Desconto = desconto,
+            Total = total,
+            Lucro = lucro,
             Data = DateTime.UtcNow,
             Itens = itens
         };
@@ -69,5 +81,42 @@ public class VendaService(AppDbContext db)
         db.Vendas.Add(venda);
         db.SaveChanges();
         return (venda, null);
+    }
+
+    public (bool ok, string? erro) Devolver(int vendaId, DevolucaoRequest req)
+    {
+        var venda = db.Vendas.Include(v => v.Itens).FirstOrDefault(v => v.Id == vendaId);
+        if (venda is null)
+            return (false, "Venda não encontrada.");
+
+        if (req.Itens is null || req.Itens.Count == 0)
+            return (false, "Informe ao menos um item para devolução.");
+
+        foreach (var itemReq in req.Itens)
+        {
+            var vendaItem = venda.Itens.FirstOrDefault(i => i.ProdutoId == itemReq.ProdutoId);
+            if (vendaItem is null)
+                return (false, $"Produto Id={itemReq.ProdutoId} não encontrado nesta venda.");
+
+            if (itemReq.Quantidade <= 0 || itemReq.Quantidade > vendaItem.Quantidade)
+                return (false, $"Quantidade inválida para devolução de '{vendaItem.NomeProduto}' (máx: {vendaItem.Quantidade}).");
+
+            var produto = db.Produtos.FirstOrDefault(p => p.Id == itemReq.ProdutoId);
+            if (produto is not null)
+                produto.Estoque += itemReq.Quantidade;
+
+            db.Movimentacoes.Add(new EstoqueMovimentacao
+            {
+                ProdutoId = itemReq.ProdutoId,
+                NomeProduto = vendaItem.NomeProduto,
+                Tipo = "Entrada",
+                Quantidade = itemReq.Quantidade,
+                LocalCompra = $"Devolução - Venda #{vendaId}",
+                Data = DateTime.UtcNow
+            });
+        }
+
+        db.SaveChanges();
+        return (true, null);
     }
 }

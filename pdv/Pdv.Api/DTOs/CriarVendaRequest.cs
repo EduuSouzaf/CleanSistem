@@ -3,13 +3,12 @@ namespace Pdv.Api.DTOs;
 public class CriarVendaRequest
 {
     public string TipoPagamento { get; set; } = string.Empty;
-    public decimal Total { get; set; }
+    public decimal Desconto { get; set; }
     public List<VendaItemRequest> Itens { get; set; } = new();
 }
 
 public class VendaItemRequest
 {
-    // Aceita por Id (frontend) ou por código de barras (scanner direto)
     public int? ProdutoId { get; set; }
     public string? CodigoBarras { get; set; }
     public int Quantidade { get; set; }

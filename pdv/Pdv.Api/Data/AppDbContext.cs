@@ -18,6 +18,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<VendaItem>()
-            .Ignore(i => i.Subtotal);
+            .Ignore(i => i.Subtotal)
+            .Ignore(i => i.Lucro);
     }
 }

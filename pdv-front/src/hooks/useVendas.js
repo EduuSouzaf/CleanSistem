@@ -6,6 +6,7 @@ export function useVendas() {
   const [cart, setCart] = useState([]);
   const [allProdutos, setAllProdutos] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [desconto, setDesconto] = useState({ tipo: 'valor', valor: '' });
 
   useEffect(() => {
     getProdutos()
@@ -20,7 +21,6 @@ export function useVendas() {
     } catch {}
   }, []);
 
-  // Retorna o ID do produto adicionado (para animação) ou null se não encontrado
   const addByBarcode = useCallback((barcode) => {
     const produto = allProdutos.find(
       (p) => String(p.codigoBarras) === String(barcode)
@@ -52,9 +52,25 @@ export function useVendas() {
     setCart((prev) => prev.filter((i) => i.id !== produtoId));
   }, []);
 
-  const clearCart = useCallback(() => setCart([]), []);
+  const clearCart = useCallback(() => {
+    setCart([]);
+    setDesconto({ tipo: 'valor', valor: '' });
+  }, []);
 
-  const total = cart.reduce((sum, item) => sum + item.precoVenda * item.quantidade, 0);
+  const subtotal = cart.reduce((sum, item) => sum + item.precoVenda * item.quantidade, 0);
+
+  const descontoValor = (() => {
+    const v = parseFloat(desconto.valor) || 0;
+    if (desconto.tipo === 'percentual') return Math.min(subtotal * v / 100, subtotal);
+    return Math.min(v, subtotal);
+  })();
+
+  const total = Math.max(0, subtotal - descontoValor);
+
+  const lucro = cart.reduce(
+    (sum, item) => sum + (item.precoVenda - (item.precoCusto ?? 0)) * item.quantidade,
+    0
+  ) - descontoValor;
 
   const finalizarVenda = async (tipoPagamento) => {
     if (cart.length === 0) return;
@@ -62,7 +78,7 @@ export function useVendas() {
     try {
       await registrarVenda({
         tipoPagamento,
-        total,
+        desconto: descontoValor,
         itens: cart.map((item) => ({
           produtoId: item.id,
           quantidade: item.quantidade,
@@ -73,13 +89,17 @@ export function useVendas() {
     } finally {
       setLoading(false);
     }
-    // erros propagam para o chamador
   };
 
   return {
     cart,
+    subtotal,
+    descontoValor,
     total,
+    lucro,
     loading,
+    desconto,
+    setDesconto,
     addByBarcode,
     updateQuantity,
     removeItem,
