@@ -7,6 +7,7 @@ import ProdutosPage from './pages/ProdutosPage';
 import EstoquePage from './pages/EstoquePage';
 import RelatoriosPage from './pages/RelatoriosPage';
 import VendasHistoricoPage from './pages/VendasHistoricoPage';
+import PwaInstallBanner from './components/PwaInstallBanner';
 
 export default function App() {
   const [autenticado, setAutenticado] = useState(() => !!localStorage.getItem('token'));
@@ -26,6 +27,7 @@ export default function App() {
           <Route path="/vendas" element={<VendasHistoricoPage />} />
         </Routes>
       </Layout>
+      <PwaInstallBanner />
     </BrowserRouter>
   );
 }

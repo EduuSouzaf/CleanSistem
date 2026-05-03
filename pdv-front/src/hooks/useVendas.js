@@ -40,6 +40,23 @@ export function useVendas() {
     return produto.id;
   }, [allProdutos]);
 
+  const addById = useCallback((produtoId) => {
+    const produto = allProdutos.find((p) => p.id === produtoId);
+    if (!produto) return null;
+
+    setCart((prev) => {
+      const idx = prev.findIndex((i) => i.id === produto.id);
+      if (idx >= 0) {
+        const updated = [...prev];
+        updated[idx] = { ...updated[idx], quantidade: updated[idx].quantidade + 1 };
+        return updated;
+      }
+      return [...prev, { ...produto, quantidade: 1 }];
+    });
+
+    return produto.id;
+  }, [allProdutos]);
+
   const updateQuantity = useCallback((produtoId, qty) => {
     const n = Number(qty);
     setCart((prev) => {
@@ -93,6 +110,7 @@ export function useVendas() {
 
   return {
     cart,
+    allProdutos,
     subtotal,
     descontoValor,
     total,
@@ -101,6 +119,7 @@ export function useVendas() {
     desconto,
     setDesconto,
     addByBarcode,
+    addById,
     updateQuantity,
     removeItem,
     clearCart,

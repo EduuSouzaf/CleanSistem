@@ -12,9 +12,9 @@ import { playBeep, playErrorBeep, playSuccessBeep } from '../utils/sound';
 
 export default function VendasPage() {
   const {
-    cart, subtotal, descontoValor, total, lucro, loading,
+    cart, allProdutos, subtotal, descontoValor, total, lucro, loading,
     desconto, setDesconto,
-    addByBarcode, updateQuantity, removeItem, clearCart, finalizarVenda,
+    addByBarcode, addById, updateQuantity, removeItem, clearCart, finalizarVenda,
   } = useVendas();
 
   const [toast, setToast] = useState(null);
@@ -32,6 +32,15 @@ export default function VendasPage() {
     } else {
       playErrorBeep();
       showToast(`Produto "${barcode}" não encontrado`, 'error');
+    }
+  };
+
+  const handleAddById = (produtoId) => {
+    const id = addById(produtoId);
+    if (id) {
+      playBeep();
+      setLastAddedId(id);
+      setTimeout(() => setLastAddedId(null), 700);
     }
   };
 
@@ -78,7 +87,11 @@ export default function VendasPage() {
         {/* Scanner + carrinho */}
         <div className="flex flex-col flex-1 overflow-hidden">
           <div className="shrink-0 p-4 bg-white border-b border-slate-100">
-            <BarcodeInput onSubmit={handleBarcode} cartLength={cart.length} />
+            <BarcodeInput
+              onSubmit={handleBarcode}
+              produtos={allProdutos}
+              onAddById={handleAddById}
+            />
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 space-y-2">
