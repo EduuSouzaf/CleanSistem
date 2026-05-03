@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Package, Plus, Search, Pencil, Trash2, X, AlertTriangle } from 'lucide-react';
 import Toast from '../components/Toast';
 import CameraButton from '../components/CameraButton';
+import StockSummaryCards from '../components/StockSummaryCards';
 import { useProdutos } from '../hooks/useProdutos';
 import { formatBRL } from '../utils/format';
 
@@ -130,13 +131,13 @@ function ProductModal({ produto, onSave, onClose }) {
           {/* Margem + botões rápidos */}
           <div>
             <label className="block text-xs font-semibold text-slate-500 mb-1">Margem de lucro (%)</label>
-            <div className="flex gap-2 mb-1.5">
-              {[30, 40, 50].map((pct) => (
+            <div className="grid grid-cols-3 gap-1.5 mb-1.5">
+              {[30, 40, 50, 60, 70, 80].map((pct) => (
                 <button
                   key={pct}
                   type="button"
                   onClick={() => applyQuickMargem(pct)}
-                  className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                  className={`py-1.5 rounded-lg text-xs font-bold transition-colors ${
                     form.margem === String(pct)
                       ? 'bg-blue-600 text-white'
                       : 'bg-slate-100 text-slate-600 hover:bg-blue-50'
@@ -198,6 +199,29 @@ function ConfirmDialog({ nomeProduto, onConfirm, onCancel }) {
   );
 }
 
+function getRowCls(estoque) {
+  const base = 'rounded-2xl px-4 py-3.5 shadow-sm border transition-colors';
+  if (estoque === 0)   return `${base} bg-red-50 border-red-200 border-l-4 border-l-red-400`;
+  if (estoque <= 5)    return `${base} bg-yellow-50 border-yellow-200 border-l-4 border-l-yellow-400`;
+  return `${base} bg-white border-slate-100 hover:border-slate-200`;
+}
+
+function StockBadge({ estoque }) {
+  if (estoque === 0)
+    return (
+      <span className="text-xs font-bold bg-red-100 text-red-700 px-1.5 py-0.5 rounded-md leading-none">
+        SEM ESTOQUE
+      </span>
+    );
+  if (estoque <= 5)
+    return (
+      <span className="text-xs font-bold bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded-md leading-none">
+        ESTOQUE BAIXO
+      </span>
+    );
+  return null;
+}
+
 /* ─── Página principal ───────────────────────────────────────────────── */
 export default function ProdutosPage() {
   const { produtos, loading, error, criarProduto, editarProduto, excluirProduto } = useProdutos();
@@ -205,6 +229,7 @@ export default function ProdutosPage() {
   const [modal, setModal] = useState(null); // null | 'new' | produto
   const [deletingId, setDeletingId] = useState(null);
   const [toast, setToast] = useState(null);
+  const [summaryKey, setSummaryKey] = useState(0);
 
   const showToast = (message, type) => setToast({ message, type });
 
@@ -224,6 +249,7 @@ export default function ProdutosPage() {
         showToast('Produto cadastrado!', 'success');
       }
       setModal(null);
+      setSummaryKey((k) => k + 1);
     } catch (err) {
       showToast(err.message, 'error');
       throw err;
@@ -283,6 +309,11 @@ export default function ProdutosPage() {
         </div>
       </header>
 
+      {/* Resumo de estoque — sempre visível */}
+      <div className="shrink-0 border-b border-slate-100 bg-slate-50">
+        <StockSummaryCards refreshKey={summaryKey} />
+      </div>
+
       {/* List */}
       <div className="flex-1 overflow-y-auto p-4 space-y-2">
         {loading && (
@@ -301,13 +332,13 @@ export default function ProdutosPage() {
         )}
 
         {filtered.map((produto) => (
-          <div
-            key={produto.id}
-            className="bg-white rounded-2xl px-4 py-3.5 shadow-sm border border-slate-100 hover:border-slate-200 transition-colors"
-          >
+          <div key={produto.id} className={getRowCls(produto.estoque)}>
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">
-                <p className="font-bold text-slate-900 text-sm leading-snug">{produto.nome}</p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="font-bold text-slate-900 text-sm leading-snug">{produto.nome}</p>
+                  <StockBadge estoque={produto.estoque} />
+                </div>
                 <p className="text-xs text-slate-400 font-mono mt-0.5">{produto.codigoBarras}</p>
                 <div className="flex flex-wrap gap-3 mt-2">
                   <span className="text-xs text-slate-500">

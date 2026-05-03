@@ -28,6 +28,11 @@ export default function CameraScanner({ onDetected, onClose }) {
   }, []);
 
   useEffect(() => {
+    // Fecha teclado antes de mostrar a câmera
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+
     const scanner = new Html5Qrcode(REGION_ID, { verbose: false });
     scannerRef.current = scanner;
 
