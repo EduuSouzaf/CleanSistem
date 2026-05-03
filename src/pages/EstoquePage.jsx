@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Boxes, ScanLine, Plus, PackageCheck } from 'lucide-react';
 import Toast from '../components/Toast';
+import CameraButton from '../components/CameraButton';
 import { useProdutos } from '../hooks/useProdutos';
 import { registrarEntrada } from '../services/estoqueService';
 import { formatBRL } from '../utils/format';
@@ -11,6 +12,7 @@ export default function EstoquePage() {
   const [selecionado, setSelecionado] = useState(null);
   const [quantidade, setQuantidade] = useState('');
   const [precoCusto, setPrecoCusto] = useState('');
+  const [localCompra, setLocalCompra] = useState('');
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState(null);
 
@@ -47,12 +49,14 @@ export default function EstoquePage() {
         produtoId: selecionado.id,
         quantidade: Number(quantidade),
         precoCusto: Number(precoCusto) || 0,
+        localCompra: localCompra.trim() || undefined,
       });
       showToast(`+${quantidade} unidade(s) de "${selecionado.nome}" registrado!`, 'success');
       setSelecionado(null);
       setSearch('');
       setQuantidade('');
       setPrecoCusto('');
+      setLocalCompra('');
     } catch (err) {
       showToast(err.message, 'error');
     } finally {
@@ -77,7 +81,8 @@ export default function EstoquePage() {
           <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">
             Produto
           </label>
-          <div className="relative">
+          <div className="flex gap-2">
+          <div className="relative flex-1">
             <ScanLine className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
             <input
               type="text"
@@ -106,6 +111,8 @@ export default function EstoquePage() {
               </div>
             )}
           </div>
+          <CameraButton onDetected={(code) => { setSelecionado(null); handleSearch(code); }} />
+        </div>
         </div>
 
         {/* Card do produto selecionado */}
@@ -175,6 +182,20 @@ export default function EstoquePage() {
               Atual: {formatBRL(selecionado.precoCusto)} → Novo: {formatBRL(Number(precoCusto))}
             </p>
           )}
+        </div>
+
+        {/* Local de compra */}
+        <div>
+          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">
+            Local de compra <span className="text-slate-300 normal-case font-normal">— opcional</span>
+          </label>
+          <input
+            type="text"
+            value={localCompra}
+            onChange={(e) => setLocalCompra(e.target.value)}
+            placeholder="Ex: Fornecedor ABC, Mercado Central..."
+            className="w-full px-4 py-3.5 rounded-2xl border-2 border-slate-200 focus:border-blue-500 focus:outline-none text-sm bg-white transition-colors"
+          />
         </div>
 
         {/* Botão */}

@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Package, Plus, Search, Pencil, Trash2, X, AlertTriangle } from 'lucide-react';
 import Toast from '../components/Toast';
+import CameraButton from '../components/CameraButton';
+import StockSummaryCards from '../components/StockSummaryCards';
 import { useProdutos } from '../hooks/useProdutos';
 import { formatBRL } from '../utils/format';
 
@@ -9,13 +11,49 @@ function ProductModal({ produto, onSave, onClose }) {
   const [form, setForm] = useState({
     nome: produto?.nome ?? '',
     codigoBarras: produto?.codigoBarras ?? '',
-    precoCusto: produto?.precoCusto ?? '',
-    precoVenda: produto?.precoVenda ?? '',
+    precoCusto: produto?.precoCusto != null ? String(produto.precoCusto) : '',
+    precoVenda: produto?.precoVenda != null ? String(produto.precoVenda) : '',
+    margem: '',
   });
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+
+  const handleCustoChange = (e) => {
+    const custo = e.target.value;
+    setForm((f) => {
+      const margem = parseFloat(f.margem) || 0;
+      const venda = margem > 0 && custo
+        ? (parseFloat(custo) * (1 + margem / 100)).toFixed(2)
+        : f.precoVenda;
+      return { ...f, precoCusto: custo, precoVenda: venda };
+    });
+  };
+
+  const handleMargemChange = (e) => {
+    const margem = e.target.value;
+    setForm((f) => {
+      const custo = parseFloat(f.precoCusto) || 0;
+      const venda = margem && custo
+        ? (custo * (1 + parseFloat(margem) / 100)).toFixed(2)
+        : f.precoVenda;
+      return { ...f, margem, precoVenda: venda };
+    });
+  };
+
+  const applyQuickMargem = (pct) => {
+    setForm((f) => {
+      const custo = parseFloat(f.precoCusto) || 0;
+      const venda = custo ? (custo * (1 + pct / 100)).toFixed(2) : f.precoVenda;
+      return { ...f, margem: String(pct), precoVenda: venda };
+    });
+  };
+
+  const custo = parseFloat(form.precoCusto) || 0;
+  const venda = parseFloat(form.precoVenda) || 0;
+  const lucroItem = venda - custo;
+  const margemReal = custo > 0 ? ((lucroItem / custo) * 100).toFixed(1) : null;
 
   const validate = () => {
     const e = {};
@@ -42,27 +80,14 @@ function ProductModal({ produto, onSave, onClose }) {
     }
   };
 
-  const field = (label, key, opts = {}) => (
-    <div>
-      <label className="block text-xs font-semibold text-slate-500 mb-1">{label}</label>
-      <input
-        value={form[key]}
-        onChange={set(key)}
-        className={`w-full px-4 py-3 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 transition ${
-          errors[key] ? 'border-red-400 bg-red-50' : 'border-slate-200 focus:border-blue-500 bg-white'
-        }`}
-        {...opts}
-      />
-      {errors[key] && <p className="text-xs text-red-500 mt-1">{errors[key]}</p>}
-    </div>
-  );
+  const inputCls = (key) =>
+    `w-full px-4 py-3 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 transition ${
+      errors[key] ? 'border-red-400 bg-red-50' : 'border-slate-200 focus:border-blue-500 bg-white'
+    }`;
 
   return (
     <div className="fixed inset-0 bg-black/40 z-40 flex items-end lg:items-center justify-center p-4" onClick={onClose}>
-      <div
-        className="bg-white rounded-3xl w-full max-w-md p-6 shadow-2xl animate-fade-in"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className="bg-white rounded-3xl w-full max-w-md p-6 shadow-2xl animate-fade-in" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-xl font-black text-slate-900">
             {produto ? 'Editar Produto' : 'Novo Produto'}
@@ -73,17 +98,73 @@ function ProductModal({ produto, onSave, onClose }) {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {field('Nome do produto', 'nome', { placeholder: 'Ex: Coca-Cola 350ml', autoFocus: true })}
-          {field('Código de barras', 'codigoBarras', { placeholder: 'Ex: 7891234567890', className: 'font-mono' })}
-          <div className="grid grid-cols-2 gap-3">
-            {field('Preço de custo (R$)', 'precoCusto', { type: 'number', step: '0.01', min: '0', placeholder: '0,00' })}
-            {field('Preço de venda (R$)', 'precoVenda', { type: 'number', step: '0.01', min: '0.01', placeholder: '0,00' })}
+          {/* Nome */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 mb-1">Nome do produto</label>
+            <input value={form.nome} onChange={set('nome')} placeholder="Ex: Coca-Cola 350ml" className={inputCls('nome')} />
+            {errors.nome && <p className="text-xs text-red-500 mt-1">{errors.nome}</p>}
           </div>
-          <button
-            type="submit"
-            disabled={saving}
-            className="w-full bg-blue-600 hover:bg-blue-700 active:scale-95 text-white py-4 rounded-2xl font-bold text-base transition-all disabled:opacity-50 mt-2"
-          >
+
+          {/* Código de barras */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 mb-1">Código de barras</label>
+            <div className="flex gap-2">
+              <input
+                value={form.codigoBarras}
+                onChange={set('codigoBarras')}
+                placeholder="Ex: 7891234567890"
+                className={`flex-1 px-4 py-3 rounded-xl border text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/30 transition ${
+                  errors.codigoBarras ? 'border-red-400 bg-red-50' : 'border-slate-200 focus:border-blue-500 bg-white'
+                }`}
+              />
+              <CameraButton onDetected={(code) => setForm((f) => ({ ...f, codigoBarras: code }))} />
+            </div>
+            {errors.codigoBarras && <p className="text-xs text-red-500 mt-1">{errors.codigoBarras}</p>}
+          </div>
+
+          {/* Preço custo */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 mb-1">Preço de custo (R$)</label>
+            <input type="number" step="0.01" min="0" value={form.precoCusto} onChange={handleCustoChange} placeholder="0,00" className={inputCls('precoCusto')} />
+          </div>
+
+          {/* Margem + botões rápidos */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 mb-1">Margem de lucro (%)</label>
+            <div className="grid grid-cols-3 gap-1.5 mb-1.5">
+              {[30, 40, 50, 60, 70, 80].map((pct) => (
+                <button
+                  key={pct}
+                  type="button"
+                  onClick={() => applyQuickMargem(pct)}
+                  className={`py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                    form.margem === String(pct)
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-slate-100 text-slate-600 hover:bg-blue-50'
+                  }`}
+                >
+                  +{pct}%
+                </button>
+              ))}
+            </div>
+            <input type="number" step="0.1" min="0" value={form.margem} onChange={handleMargemChange} placeholder="Ex: 40" className={inputCls('margem')} />
+          </div>
+
+          {/* Preço venda */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 mb-1">Preço de venda (R$)</label>
+            <input type="number" step="0.01" min="0.01" value={form.precoVenda} onChange={set('precoVenda')} placeholder="0,00"
+              className={inputCls('precoVenda')} />
+            {errors.precoVenda && <p className="text-xs text-red-500 mt-1">{errors.precoVenda}</p>}
+            {custo > 0 && venda > 0 && (
+              <p className={`text-xs mt-1 font-semibold ${lucroItem >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                Lucro: R$ {lucroItem.toFixed(2)}{margemReal ? ` (${margemReal}%)` : ''}
+              </p>
+            )}
+          </div>
+
+          <button type="submit" disabled={saving}
+            className="w-full bg-blue-600 hover:bg-blue-700 active:scale-95 text-white py-4 rounded-2xl font-bold text-base transition-all disabled:opacity-50 mt-2">
             {saving ? 'Salvando...' : produto ? 'Salvar alterações' : 'Cadastrar produto'}
           </button>
         </form>
@@ -118,6 +199,29 @@ function ConfirmDialog({ nomeProduto, onConfirm, onCancel }) {
   );
 }
 
+function getRowCls(estoque) {
+  const base = 'rounded-2xl px-4 py-3.5 shadow-sm border transition-colors';
+  if (estoque === 0)   return `${base} bg-red-50 border-red-200 border-l-4 border-l-red-400`;
+  if (estoque <= 5)    return `${base} bg-yellow-50 border-yellow-200 border-l-4 border-l-yellow-400`;
+  return `${base} bg-white border-slate-100 hover:border-slate-200`;
+}
+
+function StockBadge({ estoque }) {
+  if (estoque === 0)
+    return (
+      <span className="text-xs font-bold bg-red-100 text-red-700 px-1.5 py-0.5 rounded-md leading-none">
+        SEM ESTOQUE
+      </span>
+    );
+  if (estoque <= 5)
+    return (
+      <span className="text-xs font-bold bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded-md leading-none">
+        ESTOQUE BAIXO
+      </span>
+    );
+  return null;
+}
+
 /* ─── Página principal ───────────────────────────────────────────────── */
 export default function ProdutosPage() {
   const { produtos, loading, error, criarProduto, editarProduto, excluirProduto } = useProdutos();
@@ -125,6 +229,7 @@ export default function ProdutosPage() {
   const [modal, setModal] = useState(null); // null | 'new' | produto
   const [deletingId, setDeletingId] = useState(null);
   const [toast, setToast] = useState(null);
+  const [summaryKey, setSummaryKey] = useState(0);
 
   const showToast = (message, type) => setToast({ message, type });
 
@@ -144,6 +249,7 @@ export default function ProdutosPage() {
         showToast('Produto cadastrado!', 'success');
       }
       setModal(null);
+      setSummaryKey((k) => k + 1);
     } catch (err) {
       showToast(err.message, 'error');
       throw err;
@@ -183,22 +289,30 @@ export default function ProdutosPage() {
           </button>
         </div>
 
-        <div className="relative">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar por nome ou código..."
-            className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:outline-none text-sm bg-slate-50 focus:bg-white transition"
-          />
-          {search && (
-            <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-              <X size={14} />
-            </button>
-          )}
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar por nome ou código..."
+              className="w-full pl-10 pr-8 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:outline-none text-sm bg-slate-50 focus:bg-white transition"
+            />
+            {search && (
+              <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                <X size={14} />
+              </button>
+            )}
+          </div>
+          <CameraButton onDetected={(code) => setSearch(code)} size="sm" />
         </div>
       </header>
+
+      {/* Resumo de estoque — sempre visível */}
+      <div className="shrink-0 border-b border-slate-100 bg-slate-50">
+        <StockSummaryCards refreshKey={summaryKey} />
+      </div>
 
       {/* List */}
       <div className="flex-1 overflow-y-auto p-4 space-y-2">
@@ -218,13 +332,13 @@ export default function ProdutosPage() {
         )}
 
         {filtered.map((produto) => (
-          <div
-            key={produto.id}
-            className="bg-white rounded-2xl px-4 py-3.5 shadow-sm border border-slate-100 hover:border-slate-200 transition-colors"
-          >
+          <div key={produto.id} className={getRowCls(produto.estoque)}>
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">
-                <p className="font-bold text-slate-900 text-sm leading-snug">{produto.nome}</p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="font-bold text-slate-900 text-sm leading-snug">{produto.nome}</p>
+                  <StockBadge estoque={produto.estoque} />
+                </div>
                 <p className="text-xs text-slate-400 font-mono mt-0.5">{produto.codigoBarras}</p>
                 <div className="flex flex-wrap gap-3 mt-2">
                   <span className="text-xs text-slate-500">

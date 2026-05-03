@@ -1,12 +1,13 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ShoppingCart, Package, Boxes, BarChart3 } from 'lucide-react';
+import { ShoppingCart, Package, Boxes, BarChart3, Receipt } from 'lucide-react';
 
 const tabs = [
-  { path: '/', icon: ShoppingCart, label: 'Caixa' },
-  { path: '/produtos', icon: Package, label: 'Produtos' },
-  { path: '/estoque', icon: Boxes, label: 'Estoque' },
-  { path: '/relatorios', icon: BarChart3, label: 'Relatórios' },
+  { path: '/',           icon: ShoppingCart, label: 'Caixa'      },
+  { path: '/produtos',   icon: Package,      label: 'Produtos'   },
+  { path: '/estoque',    icon: Boxes,        label: 'Estoque'    },
+  { path: '/relatorios', icon: BarChart3,    label: 'Relatórios' },
+  { path: '/vendas',     icon: Receipt,      label: 'Vendas'     },
 ];
 
 export default function Layout({ children }) {
@@ -37,8 +38,8 @@ export default function Layout({ children }) {
                 {active && (
                   <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-blue-600 rounded-full" />
                 )}
-                <Icon size={22} strokeWidth={active ? 2.5 : 1.8} />
-                <span className="text-xs font-semibold">{label}</span>
+                <Icon size={20} strokeWidth={active ? 2.5 : 1.8} />
+                <span className="text-[10px] font-semibold">{label}</span>
               </button>
             );
           })}
