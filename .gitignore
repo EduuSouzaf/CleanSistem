@@ -3,5 +3,13 @@ dist/
 .env
 .env.local
 .env.*.local
+.vite/
 .DS_Store
+Thumbs.db
+*.log
+*.tmp
+.idea/
+.vscode/
+*.swp
 .vercel
+.claude/

@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: cleansistem-api
+    runtime: docker
+    dockerfilePath: pdv/Pdv.Api/Dockerfile
+    dockerContext: pdv/Pdv.Api
+    plan: free
+    envVars:
+      - key: PORT
+        value: 10000
