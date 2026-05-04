@@ -8,7 +8,8 @@ function normalize(str) {
   return str
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')
-    .toLowerCase();
+    .toLowerCase()
+    .trim();
 }
 
 export default function BarcodeInput({ onSubmit, produtos = [], onAddById }) {
@@ -24,8 +25,8 @@ export default function BarcodeInput({ onSubmit, produtos = [], onAddById }) {
   const isSearchMode = value.trim().length >= 2 && !/^\d+$/.test(value.trim());
   const suggestions = isSearchMode
     ? produtos
-        .filter((p) => normalize(p.nome).includes(normalize(value.trim())))
-        .slice(0, 7)
+        .filter((p) => normalize(p.nome).includes(normalize(value)))
+        .slice(0, 8)
     : [];
 
   const updateDropPos = useCallback(() => {
@@ -44,26 +45,34 @@ export default function BarcodeInput({ onSubmit, produtos = [], onAddById }) {
     setShowDropdown(true);
   };
 
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && value.trim()) {
-      onSubmit(value.trim());
-      setValue('');
-      setShowDropdown(false);
-    }
-    if (e.key === 'Escape') setShowDropdown(false);
-  };
-
-  // blur com delay: dá tempo do click/touch no item do dropdown disparar antes
-  const handleInputBlur = () => {
-    blurTimerRef.current = setTimeout(() => setShowDropdown(false), 200);
-  };
-
   const handleSelect = (produto) => {
-    clearTimeout(blurTimerRef.current); // cancela o fechamento por blur
+    clearTimeout(blurTimerRef.current);
     onAddById?.(produto.id);
     setValue('');
     setShowDropdown(false);
-    setTimeout(() => inputRef.current?.focus(), 50);
+    setTimeout(() => inputRef.current?.focus(), 100);
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && value.trim()) {
+      // Se há sugestões visíveis, Enter adiciona a primeira — mais intuitivo
+      if (suggestions.length > 0) {
+        handleSelect(suggestions[0]);
+      } else {
+        onSubmit(value.trim());
+        setValue('');
+        setShowDropdown(false);
+      }
+    }
+    if (e.key === 'Escape') {
+      setShowDropdown(false);
+      setValue('');
+    }
+  };
+
+  const handleInputBlur = () => {
+    // Delay para dar tempo ao onTouchEnd / onClick do item disparar primeiro
+    blurTimerRef.current = setTimeout(() => setShowDropdown(false), 250);
   };
 
   const dropdown =
@@ -84,22 +93,29 @@ export default function BarcodeInput({ onSubmit, produtos = [], onAddById }) {
               <button
                 key={p.id}
                 type="button"
-                onMouseDown={(e) => e.preventDefault()} // desktop: evita blur do input
+                /* Desktop: evita blur do input antes do click */
+                onMouseDown={(e) => e.preventDefault()}
+                /* Mobile: dispara ANTES do keyboard-close reflow cancelar o toque */
+                onTouchEnd={(e) => {
+                  e.preventDefault(); // cancela o click sintético (evita duplo disparo)
+                  handleSelect(p);
+                }}
                 onClick={() => handleSelect(p)}
-                className={`w-full flex items-center justify-between px-4 py-3 hover:bg-blue-50 active:bg-blue-100 transition-colors text-left ${
-                  i < suggestions.length - 1 ? 'border-b border-slate-50' : ''
+                className={`w-full flex items-center justify-between px-4 py-4 hover:bg-blue-50 active:bg-blue-100 transition-colors ${
+                  i < suggestions.length - 1 ? 'border-b border-slate-100' : ''
                 }`}
               >
-                <div className="min-w-0 flex-1 pr-3">
-                  <p className="text-sm font-semibold text-slate-900 truncate">{p.nome}</p>
-                  <p className="text-xs text-slate-400 font-mono mt-0.5">{p.codigoBarras}</p>
-                </div>
-                <div className="text-right shrink-0">
-                  <p className="text-sm font-black text-blue-600">{formatBRL(p.precoVenda)}</p>
-                  <p className={`text-xs font-semibold mt-0.5 ${p.estoque > 0 ? 'text-green-600' : 'text-red-500'}`}>
-                    {p.estoque > 0 ? `${p.estoque} un.` : 'Sem estoque'}
+                <div className="min-w-0 flex-1 text-left pr-3">
+                  <p className="text-base font-semibold text-slate-900 truncate leading-tight">
+                    {p.nome}
+                  </p>
+                  <p className={`text-xs font-medium mt-0.5 ${p.estoque > 0 ? 'text-slate-400' : 'text-red-400'}`}>
+                    {p.estoque > 0 ? `${p.estoque} em estoque` : 'Sem estoque'}
                   </p>
                 </div>
+                <p className="text-base font-black text-blue-600 shrink-0">
+                  {formatBRL(p.precoVenda)}
+                </p>
               </button>
             ))}
           </div>,
