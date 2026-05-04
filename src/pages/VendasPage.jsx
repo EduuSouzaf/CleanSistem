@@ -18,7 +18,7 @@ export default function VendasPage() {
   const {
     cart, allProdutos, subtotal, descontoValor, total, lucro, loading,
     desconto, setDesconto,
-    addByBarcode, addProduto, updateQuantity, removeItem, clearCart, finalizarVenda,
+    addByBarcode, updateQuantity, removeItem, clearCart, finalizarVenda,
   } = useVendas();
 
   const [toast, setToast]           = useState(null);
@@ -54,11 +54,9 @@ export default function VendasPage() {
     setSearchText('');
   };
 
-  // Adiciona produto selecionado da lista de sugestões
+  // Selecionar da lista → simula digitação do código de barras + Enter
   const handleSelectSuggestion = (produto) => {
-    const id = addProduto(produto);
-    if (id) flash(id);
-    setSearchText('');
+    handleBarcode(String(produto.codigoBarras));
   };
 
   // Enter: se há sugestões → adiciona o primeiro; senão → trata como código de barras
