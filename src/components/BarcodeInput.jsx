@@ -4,6 +4,7 @@ import { ScanLine, Camera, Search } from 'lucide-react';
 import CameraScanner from './CameraScanner';
 import { formatBRL } from '../utils/format';
 
+// Escapes unicode explícito — caracteres invisíveis no source corrompem silenciosamente
 function normalize(str) {
   return str
     .normalize('NFD')
@@ -20,7 +21,6 @@ export default function BarcodeInput({ onSubmit, produtos = [], onAddById }) {
   const inputRef = useRef(null);
   const wrapperRef = useRef(null);
   const dropdownRef = useRef(null);
-  const blurTimerRef = useRef(null);
 
   const isSearchMode = value.trim().length >= 2 && !/^\d+$/.test(value.trim());
   const suggestions = isSearchMode
@@ -40,13 +40,27 @@ export default function BarcodeInput({ onSubmit, produtos = [], onAddById }) {
     if (showDropdown && suggestions.length > 0) updateDropPos();
   }, [showDropdown, suggestions.length, updateDropPos]);
 
+  // Fecha ao interagir fora do input ou do dropdown
+  useEffect(() => {
+    if (!showDropdown) return;
+    const handleOutside = (e) => {
+      if (
+        !wrapperRef.current?.contains(e.target) &&
+        !dropdownRef.current?.contains(e.target)
+      ) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener('pointerdown', handleOutside);
+    return () => document.removeEventListener('pointerdown', handleOutside);
+  }, [showDropdown]);
+
   const handleChange = (e) => {
     setValue(e.target.value);
     setShowDropdown(true);
   };
 
   const handleSelect = (produto) => {
-    clearTimeout(blurTimerRef.current);
     onAddById?.(produto.id);
     setValue('');
     setShowDropdown(false);
@@ -55,7 +69,7 @@ export default function BarcodeInput({ onSubmit, produtos = [], onAddById }) {
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && value.trim()) {
-      // Se há sugestões visíveis, Enter adiciona a primeira — mais intuitivo
+      // Enter com sugestões visíveis → adiciona o primeiro (mais intuitivo)
       if (suggestions.length > 0) {
         handleSelect(suggestions[0]);
       } else {
@@ -65,14 +79,9 @@ export default function BarcodeInput({ onSubmit, produtos = [], onAddById }) {
       }
     }
     if (e.key === 'Escape') {
-      setShowDropdown(false);
       setValue('');
+      setShowDropdown(false);
     }
-  };
-
-  const handleInputBlur = () => {
-    // Delay para dar tempo ao onTouchEnd / onClick do item disparar primeiro
-    blurTimerRef.current = setTimeout(() => setShowDropdown(false), 250);
   };
 
   const dropdown =
@@ -93,19 +102,17 @@ export default function BarcodeInput({ onSubmit, produtos = [], onAddById }) {
               <button
                 key={p.id}
                 type="button"
-                /* Desktop: evita blur do input antes do click */
-                onMouseDown={(e) => e.preventDefault()}
-                /* Mobile: dispara ANTES do keyboard-close reflow cancelar o toque */
-                onTouchEnd={(e) => {
-                  e.preventDefault(); // cancela o click sintético (evita duplo disparo)
+                onPointerDown={(e) => {
+                  // pointerdown dispara ANTES do blur e ANTES do reflow do teclado no iOS
+                  // e.preventDefault() cancela a mudança de foco (input não perde foco)
+                  e.preventDefault();
                   handleSelect(p);
                 }}
-                onClick={() => handleSelect(p)}
-                className={`w-full flex items-center justify-between px-4 py-4 hover:bg-blue-50 active:bg-blue-100 transition-colors ${
-                  i < suggestions.length - 1 ? 'border-b border-slate-100' : ''
-                }`}
+                className={`w-full flex items-center justify-between px-4 py-4 text-left
+                  hover:bg-blue-50 active:bg-blue-100 transition-colors cursor-pointer
+                  ${i < suggestions.length - 1 ? 'border-b border-slate-100' : ''}`}
               >
-                <div className="min-w-0 flex-1 text-left pr-3">
+                <div className="min-w-0 flex-1 pr-3">
                   <p className="text-base font-semibold text-slate-900 truncate leading-tight">
                     {p.nome}
                   </p>
@@ -113,7 +120,7 @@ export default function BarcodeInput({ onSubmit, produtos = [], onAddById }) {
                     {p.estoque > 0 ? `${p.estoque} em estoque` : 'Sem estoque'}
                   </p>
                 </div>
-                <p className="text-base font-black text-blue-600 shrink-0">
+                <p className="text-base font-black text-blue-600 shrink-0 tabular-nums">
                   {formatBRL(p.precoVenda)}
                 </p>
               </button>
@@ -145,7 +152,6 @@ export default function BarcodeInput({ onSubmit, produtos = [], onAddById }) {
             onChange={handleChange}
             onKeyDown={handleKeyDown}
             onFocus={() => value.trim().length >= 2 && setShowDropdown(true)}
-            onBlur={handleInputBlur}
             placeholder="Código de barras ou nome do produto"
             autoComplete="off"
             autoCapitalize="off"
@@ -155,7 +161,7 @@ export default function BarcodeInput({ onSubmit, produtos = [], onAddById }) {
         </div>
         <button
           type="button"
-          onMouseDown={(e) => e.preventDefault()}
+          onPointerDown={(e) => e.preventDefault()}
           onClick={() => setCameraOpen(true)}
           className="shrink-0 w-14 h-14 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white rounded-2xl flex items-center justify-center transition-all"
           title="Escanear com câmera"
