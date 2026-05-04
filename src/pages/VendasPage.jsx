@@ -14,7 +14,7 @@ export default function VendasPage() {
   const {
     cart, allProdutos, subtotal, descontoValor, total, lucro, loading,
     desconto, setDesconto,
-    addByBarcode, addById, updateQuantity, removeItem, clearCart, finalizarVenda,
+    addByBarcode, addProduto, updateQuantity, removeItem, clearCart, finalizarVenda,
   } = useVendas();
 
   const [toast, setToast] = useState(null);
@@ -35,8 +35,8 @@ export default function VendasPage() {
     }
   };
 
-  const handleAddById = (produtoId) => {
-    const id = addById(produtoId);
+  const handleAddProduto = (produto) => {
+    const id = addProduto(produto);
     if (id) {
       playBeep();
       setLastAddedId(id);
@@ -90,7 +90,7 @@ export default function VendasPage() {
             <BarcodeInput
               onSubmit={handleBarcode}
               produtos={allProdutos}
-              onAddById={handleAddById}
+              onAddProduto={handleAddProduto}
             />
           </div>
 

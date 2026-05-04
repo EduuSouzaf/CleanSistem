@@ -11,7 +11,7 @@ function normalize(str) {
     .trim();
 }
 
-export default function BarcodeInput({ onSubmit, produtos = [], onAddById }) {
+export default function BarcodeInput({ onSubmit, produtos = [], onAddProduto }) {
   const [value, setValue] = useState('');
   const [cameraOpen, setCameraOpen] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -25,7 +25,8 @@ export default function BarcodeInput({ onSubmit, produtos = [], onAddById }) {
 
   const handleSelect = (produto) => {
     clearTimeout(blurTimer.current);
-    onAddById?.(produto.id);
+    // Passa o objeto completo — sem lookup por ID, sem risco de mismatch
+    onAddProduto?.(produto);
     setValue('');
     setShowDropdown(false);
     setTimeout(() => inputRef.current?.focus(), 50);
@@ -50,13 +51,13 @@ export default function BarcodeInput({ onSubmit, produtos = [], onAddById }) {
   return (
     <>
       <div className="relative flex gap-2">
-        {/* Input */}
         <div className="relative flex-1">
           {isSearchMode ? (
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-500 pointer-events-none" size={20} />
           ) : (
             <ScanLine className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-500 pointer-events-none" size={20} />
           )}
+
           <input
             ref={inputRef}
             type="text"
@@ -72,14 +73,13 @@ export default function BarcodeInput({ onSubmit, produtos = [], onAddById }) {
             className="w-full pl-12 pr-4 py-4 text-base font-medium rounded-2xl border-2 border-slate-200 focus:border-blue-500 focus:outline-none bg-white transition-colors placeholder:text-slate-400"
           />
 
-          {/* Dropdown — posicionado absolutamente abaixo do input, sem portal */}
+          {/* Dropdown absoluto — sem portal, onClick simples e confiável */}
           {showDropdown && suggestions.length > 0 && (
             <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-50">
               {suggestions.map((p, i) => (
                 <button
                   key={p.id}
                   type="button"
-                  // onMouseDown previne blur no desktop antes do onClick
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => handleSelect(p)}
                   className={`w-full flex items-center justify-between px-4 py-4 text-left
@@ -101,7 +101,6 @@ export default function BarcodeInput({ onSubmit, produtos = [], onAddById }) {
           )}
         </div>
 
-        {/* Botão câmera */}
         <button
           type="button"
           onMouseDown={(e) => e.preventDefault()}

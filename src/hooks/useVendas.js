@@ -40,8 +40,8 @@ export function useVendas() {
     return produto.id;
   }, [allProdutos]);
 
-  const addById = useCallback((produtoId) => {
-    const produto = allProdutos.find((p) => p.id === produtoId);
+  // Recebe o objeto completo — sem lookup, sem risco de type mismatch no id
+  const addProduto = useCallback((produto) => {
     if (!produto) return null;
 
     setCart((prev) => {
@@ -55,7 +55,7 @@ export function useVendas() {
     });
 
     return produto.id;
-  }, [allProdutos]);
+  }, []);
 
   const updateQuantity = useCallback((produtoId, qty) => {
     const n = Number(qty);
@@ -119,7 +119,7 @@ export function useVendas() {
     desconto,
     setDesconto,
     addByBarcode,
-    addById,
+    addProduto,
     updateQuantity,
     removeItem,
     clearCart,

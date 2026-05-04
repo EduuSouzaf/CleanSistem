@@ -26,10 +26,12 @@ export default defineConfig({
         ],
       },
       workbox: {
-        // Cache da API é evitado — apenas assets estáticos
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api\//],
+        // Ativa o novo SW imediatamente sem esperar fechar todas as abas
+        skipWaiting: true,
+        clientsClaim: true,
       },
     }),
   ],
