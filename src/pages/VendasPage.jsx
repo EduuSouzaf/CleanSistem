@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   ShoppingCart, ScanLine, Banknote, QrCode, CreditCard, Trash2,
-  Tag, TrendingUp, ChevronDown, ChevronUp,
+  Tag, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import BarcodeInput from '../components/BarcodeInput';
 import CartItem from '../components/CartItem';
@@ -10,6 +10,10 @@ import { useVendas } from '../hooks/useVendas';
 import { formatBRL } from '../utils/format';
 import { playBeep, playErrorBeep, playSuccessBeep } from '../utils/sound';
 
+function normalize(str) {
+  return str.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+}
+
 export default function VendasPage() {
   const {
     cart, allProdutos, subtotal, descontoValor, total, lucro, loading,
@@ -17,30 +21,52 @@ export default function VendasPage() {
     addByBarcode, addProduto, updateQuantity, removeItem, clearCart, finalizarVenda,
   } = useVendas();
 
-  const [toast, setToast] = useState(null);
+  const [toast, setToast]           = useState(null);
   const [lastAddedId, setLastAddedId] = useState(null);
   const [showDesconto, setShowDesconto] = useState(false);
+  const [searchText, setSearchText] = useState('');
 
-  const showToast = (message, type) => setToast({ message, type });
+  // Busca por nome: ≥2 caracteres e não é só dígitos
+  const isNameSearch = searchText.trim().length >= 2 && !/^\d+$/.test(searchText.trim());
+  const suggestions = isNameSearch
+    ? allProdutos
+        .filter((p) => normalize(p.nome).includes(normalize(searchText)))
+        .slice(0, 8)
+    : [];
 
+  const showToast = (msg, type) => setToast({ message: msg, type });
+
+  const flash = (id) => {
+    playBeep();
+    setLastAddedId(id);
+    setTimeout(() => setLastAddedId(null), 700);
+  };
+
+  // Adiciona pelo código de barras (digitado ou câmera)
   const handleBarcode = (barcode) => {
     const id = addByBarcode(barcode);
     if (id) {
-      playBeep();
-      setLastAddedId(id);
-      setTimeout(() => setLastAddedId(null), 700);
+      flash(id);
     } else {
       playErrorBeep();
       showToast(`Produto "${barcode}" não encontrado`, 'error');
     }
+    setSearchText('');
   };
 
-  const handleAddProduto = (produto) => {
+  // Adiciona produto selecionado da lista de sugestões
+  const handleSelectSuggestion = (produto) => {
     const id = addProduto(produto);
-    if (id) {
-      playBeep();
-      setLastAddedId(id);
-      setTimeout(() => setLastAddedId(null), 700);
+    if (id) flash(id);
+    setSearchText('');
+  };
+
+  // Enter: se há sugestões → adiciona o primeiro; senão → trata como código de barras
+  const handleSubmit = (text) => {
+    if (suggestions.length > 0) {
+      handleSelectSuggestion(suggestions[0]);
+    } else {
+      handleBarcode(text);
     }
   };
 
@@ -55,15 +81,13 @@ export default function VendasPage() {
     }
   };
 
-  const itemCount = cart.reduce((sum, i) => sum + i.quantidade, 0);
-  const isEmpty = cart.length === 0;
+  const itemCount  = cart.reduce((sum, i) => sum + i.quantidade, 0);
+  const isEmpty    = cart.length === 0;
   const hasDesconto = descontoValor > 0;
-
-  const setQuickDesconto = (pct) =>
-    setDesconto({ tipo: 'percentual', valor: String(pct) });
 
   return (
     <div className="flex flex-col h-full bg-slate-50">
+
       {/* Header */}
       <header className="shrink-0 bg-white border-b border-slate-100 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
@@ -84,16 +108,47 @@ export default function VendasPage() {
       </header>
 
       <div className="flex-1 min-h-0 flex flex-col lg:flex-row">
-        {/* Scanner + carrinho */}
+
+        {/* Coluna esquerda: input + resultados + carrinho */}
         <div className="flex flex-col flex-1 min-h-0">
-          <div className="shrink-0 p-4 bg-white border-b border-slate-100 relative z-10">
+
+          {/* Campo de busca */}
+          <div className="shrink-0 px-4 pt-4 pb-3 bg-white border-b border-slate-100">
             <BarcodeInput
-              onSubmit={handleBarcode}
-              produtos={allProdutos}
-              onAddProduto={handleAddProduto}
+              value={searchText}
+              onChange={setSearchText}
+              onSubmit={handleSubmit}
+              onCameraDetect={handleBarcode}
+              isSearchMode={isNameSearch}
             />
           </div>
 
+          {/* Lista de sugestões — em fluxo normal, sem absolute, sem portal */}
+          {suggestions.length > 0 && (
+            <div className="shrink-0 bg-white border-b border-slate-200 divide-y divide-slate-100 shadow-md">
+              {suggestions.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => handleSelectSuggestion(p)}
+                  className="w-full flex items-center justify-between px-4 py-4
+                    hover:bg-blue-50 active:bg-blue-100 transition-colors text-left"
+                >
+                  <div className="min-w-0 flex-1 pr-4">
+                    <p className="text-base font-semibold text-slate-900 truncate">{p.nome}</p>
+                    <p className={`text-xs font-medium mt-0.5 ${p.estoque > 0 ? 'text-slate-400' : 'text-red-400'}`}>
+                      {p.estoque > 0 ? `${p.estoque} em estoque` : 'Sem estoque'}
+                    </p>
+                  </div>
+                  <p className="text-base font-black text-blue-600 shrink-0 tabular-nums">
+                    {formatBRL(p.precoVenda)}
+                  </p>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Carrinho */}
           <div className="flex-1 overflow-y-auto p-4 space-y-2">
             {isEmpty ? (
               <div className="flex flex-col items-center justify-center h-full text-slate-300 select-none py-8">
@@ -115,7 +170,7 @@ export default function VendasPage() {
           </div>
         </div>
 
-        {/* Painel de pagamento */}
+        {/* Coluna direita: totais + pagamento */}
         <div className="shrink-0 lg:w-72 xl:w-80 bg-white lg:border-l border-t border-slate-100 flex flex-col">
 
           {/* Totais */}
@@ -167,12 +222,11 @@ export default function VendasPage() {
 
               {showDesconto && (
                 <div className="mt-2 p-3 bg-slate-50 rounded-xl space-y-2">
-                  {/* Botões rápidos */}
                   <div className="flex gap-1.5">
                     {[5, 10, 20].map((pct) => (
                       <button
                         key={pct}
-                        onClick={() => setQuickDesconto(pct)}
+                        onClick={() => setDesconto({ tipo: 'percentual', valor: String(pct) })}
                         className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-colors ${
                           desconto.tipo === 'percentual' && desconto.valor === String(pct)
                             ? 'bg-green-600 text-white'
@@ -183,8 +237,6 @@ export default function VendasPage() {
                       </button>
                     ))}
                   </div>
-
-                  {/* Input manual */}
                   <div className="flex gap-1.5">
                     <div className="flex bg-white border border-slate-200 rounded-lg overflow-hidden flex-1">
                       <button
