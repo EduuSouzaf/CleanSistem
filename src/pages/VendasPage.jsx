@@ -83,10 +83,10 @@ export default function VendasPage() {
         )}
       </header>
 
-      <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
+      <div className="flex-1 min-h-0 flex flex-col lg:flex-row">
         {/* Scanner + carrinho */}
-        <div className="flex flex-col flex-1 overflow-hidden">
-          <div className="shrink-0 p-4 bg-white border-b border-slate-100">
+        <div className="flex flex-col flex-1 min-h-0">
+          <div className="shrink-0 p-4 bg-white border-b border-slate-100 relative z-10">
             <BarcodeInput
               onSubmit={handleBarcode}
               produtos={allProdutos}
