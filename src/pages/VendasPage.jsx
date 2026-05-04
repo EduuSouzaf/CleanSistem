@@ -95,6 +95,7 @@ export default function VendasPage() {
             <ShoppingCart size={16} className="text-white" />
           </div>
           <span className="font-black text-slate-900 text-lg tracking-tight">Caixa</span>
+          <span className="text-[10px] text-slate-400 font-mono">v{__APP_VERSION__}</span>
         </div>
         {!isEmpty && (
           <button

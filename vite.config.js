@@ -2,7 +2,12 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
+const buildVersion = new Date().toISOString().slice(0, 16).replace('T', '-');
+
 export default defineConfig({
+  define: {
+    __APP_VERSION__: JSON.stringify(buildVersion),
+  },
   plugins: [
     react(),
     VitePWA({
@@ -26,12 +31,23 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        // Só cacheia assets estáticos (ícones/fontes). JS e CSS sempre vêm da rede
+        // para garantir que atualizações cheguem imediatamente sem deadlock de SW.
+        globPatterns: ['**/*.{ico,png,svg,woff2}'],
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api\//],
-        // Ativa o novo SW imediatamente sem esperar fechar todas as abas
         skipWaiting: true,
         clientsClaim: true,
+        runtimeCaching: [
+          {
+            urlPattern: /\.(?:js|css)$/,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'js-css-cache',
+              expiration: { maxEntries: 50, maxAgeSeconds: 60 },
+            },
+          },
+        ],
       },
     }),
   ],
